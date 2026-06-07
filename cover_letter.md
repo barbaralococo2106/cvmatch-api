@@ -1,0 +1,7 @@
+# COVER LETTER
+
+I've spent the last seven years building machine learning systems that directly impact user behavior—from personalization engines serving millions to credit risk models shaping lending decisions. At Félix, I see the opportunity to apply that same rigor to a new domain, and I'm drawn to your focus on solving real problems with data-driven precision.
+
+At ITTI, I owned the complete lifecycle of recommendation and personalization systems, translating business objectives into statistical models and deploying them at scale across a mobile banking platform. I've built production pipelines using Python and AWS infrastructure, designed robust validation frameworks, and partnered with Product and Engineering teams to move from hypothesis to impact. At CloudWalk and Mercado Libre, I extended this foundation by developing churn prediction models and designing customer segmentation frameworks—work that required me to balance statistical rigor with business translation, and to communicate findings clearly to non-technical stakeholders. These experiences have shaped how I approach technical leadership: defining problems precisely, building models that matter, and ensuring cross-functional teams understand both the "why" and the "how."
+
+I'm ready to bring this combination of machine learning depth and stakeholder management to Félix. I'd welcome the chance to discuss how my background in statistical modeling, experimentation, and product analytics can contribute to your team's goals.

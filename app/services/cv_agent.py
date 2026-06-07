@@ -147,6 +147,81 @@ Then add "## What was NOT added" listing the JD requirements that weren't in the
     )
     return response.content[0].text
 
+def generate_cover_letter(cv: dict, jd: dict, company_name: str, role_title: str) -> str:
+    """Genera una cover letter personalizada basada en el CV real"""
+    
+    # Extraemos explícitamente las skills reales para pasárselas a Claude
+    real_skills = cv.get("skills", {})
+    real_experience = [
+        f"{exp.get('title')} at {exp.get('company')}: {exp.get('bullets', [])}"
+        for exp in cv.get("experience", [])
+    ]
+    
+    prompt = f"""
+## CANDIDATE'S REAL SKILLS (ONLY these exist — nothing else):
+Technical: {real_skills.get('technical', [])}
+Tools: {real_skills.get('tools', [])}
+Soft: {real_skills.get('soft', [])}
+
+## CANDIDATE'S REAL EXPERIENCE (ONLY these roles exist):
+{chr(10).join(real_experience)}
+
+## JOB DESCRIPTION REQUIREMENTS:
+{json.dumps(jd, indent=2)}
+
+## TARGET: {role_title} at {company_name}
+"""
+
+    response = client.messages.create(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=1500,
+        temperature=0.4,
+        system="""You are an expert cover letter writer.
+
+## ABSOLUTE RULES — VIOLATION = FAILURE:
+1. You can ONLY mention skills that appear in "CANDIDATE'S REAL SKILLS" above
+2. You can ONLY reference experience that appears in "CANDIDATE'S REAL EXPERIENCE" above  
+3. If the JD requires a skill NOT in the candidate's real skills → ignore it completely
+4. NEVER invent metrics or outcomes not stated in the experience bullets
+5. NEVER use generic openers like "I am writing to express my interest..."
+6. NEVER use clichés: "team player", "passionate", "detail-oriented", "hard worker"
+
+## STRUCTURE (3 paragraphs, max 280 words):
+
+**Paragraph 1 — Hook:**
+Open with a specific insight connecting the candidate's REAL most relevant 
+experience to this specific role. Human, direct, not robotic.
+
+**Paragraph 2 — Bridge:**
+Connect exactly 2 REAL achievements from the experience list to the top 
+JD requirements. Only mention skills from the real skills list.
+
+**Paragraph 3 — Close:**
+Confident call to action specific to THIS role at THIS company.
+
+## TONE — infer from JD:
+- Fintech / startup → direct, energetic, concise
+- Enterprise / bank → professional but not stiff
+
+## OUTPUT FORMAT:
+First write the cover letter.
+Then add:
+---SKILLS USED---
+List every skill you mentioned and confirm it appears in CANDIDATE'S REAL SKILLS.
+If any skill you wrote is NOT in the list → rewrite that sentence before returning.""",
+        messages=[{"role": "user", "content": prompt}]
+    )
+    
+    raw = response.content[0].text
+    
+    # Separar la carta de la sección de verificación
+    if "---SKILLS USED---" in raw:
+        cover_letter = raw.split("---SKILLS USED---")[0].strip()
+    else:
+        cover_letter = raw.strip()
+    
+    return cover_letter
+
 # ── TOOL SCHEMAS (lo que Claude "ve") ────────────────────────
 
 TOOLS = [
@@ -207,6 +282,21 @@ TOOLS = [
             },
             "required": ["cv", "jd", "score"]
         }
+    },
+
+    {
+        "name": "generate_cover_letter",
+        "description": "Generates a personalized cover letter based on the candidate's real CV and the job description",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "cv":           {"type": "object", "description": "Parsed CV JSON"},
+                "jd":           {"type": "object", "description": "Analyzed JD JSON"},
+                "company_name": {"type": "string", "description": "Target company name"},
+                "role_title":   {"type": "string", "description": "Target role title"}
+            },
+            "required": ["cv", "jd", "company_name", "role_title"]
+        }
     }
 ]
 
@@ -219,7 +309,9 @@ def dispatch_tool(name: str, inputs: dict):
     if name == "analyze_jd":       return analyze_jd(**inputs)
     if name == "score_compatibility": return score_compatibility(**inputs)
     if name == "rewrite_cv":       return rewrite_cv(**inputs)
+    if name == "generate_cover_letter": return generate_cover_letter(**inputs)
     raise ValueError(f"Tool desconocida: {name}")
+
 
 # ── AGENTE PRINCIPAL ──────────────────────────────────────────
 
@@ -229,21 +321,23 @@ def run_agent(cv_file_path: str, jd_text: str) -> dict:
     Claude decide qué tools usar y en qué orden.
     """
     messages = [
-        {
-            "role": "user",
-            "content": f"""Analyze this job application:
-CV file: {cv_file_path}
-Job Description: {jd_text}
+    {
+        "role": "user",
+        "content": f"""Analyze this job application:
+        CV file: {cv_file_path}
+        Job Description: {jd_text}
 
-Please:
-1. Extract and parse the CV
-2. Analyze the job description  
-3. Score the compatibility
-4. Rewrite the CV to better match the role
+        Please complete ALL of these steps in order:
+        1. Extract and parse the CV
+        2. Analyze the job description
+        3. Score the compatibility
+        4. Rewrite the CV to better match the role
+        5. Generate a cover letter for this specific role and company
 
-Use the available tools in the right order."""
-        }
+        Use the available tools in the right order."""
+    }
     ]
+    
 
     results = {}
 

@@ -69,3 +69,17 @@ with open("cv_reescrito.md", "w") as f:
 print("\n✓ CV guardado en cv_reescrito.md")
 print("\nTODOS LOS RESULTADOS:", list(resultado.keys()))
 print("\nSUMMARY:", resultado.get("summary", ""))
+
+print("SCORE:", resultado.get("score_compatibility", {}).get("overall_score"))
+print("\nCV REESCRITO:\n", resultado.get("rewrite_cv", ""))
+print("\nCOVER LETTER:\n", resultado.get("generate_cover_letter", ""))
+
+# Guardar ambos outputs
+with open("cv_reescrito.md", "w") as f:
+    f.write(resultado.get("rewrite_cv", ""))
+
+with open("cover_letter.md", "w") as f:
+    f.write(resultado.get("generate_cover_letter", ""))
+
+print("\n✓ CV guardado en cv_reescrito.md")
+print("✓ Cover letter guardada en cover_letter.md")
