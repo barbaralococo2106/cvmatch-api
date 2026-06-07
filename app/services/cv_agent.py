@@ -102,17 +102,47 @@ No markdown. No backticks. No explanation. Just the JSON object.""",
     return clean_json(response.content[0].text)
 
 def rewrite_cv(cv: dict, jd: dict, score: dict) -> str:
-    """Reescribe el CV optimizado para el JD"""
-    prompt = f"CV:\n{json.dumps(cv)}\n\nJD:\n{json.dumps(jd)}\n\nGaps to fix:\n{json.dumps(score.get('missing_critical', []))}"
+    """Reescribe el CV optimizado para el JD — con guardrails estrictos"""
+    
+    prompt = f"""
+CANDIDATE'S ORIGINAL CV (source of truth — nothing can be added that isn't here):
+{json.dumps(cv, indent=2)}
+
+JOB DESCRIPTION REQUIREMENTS:
+{json.dumps(jd, indent=2)}
+
+GAPS IDENTIFIED:
+{json.dumps(score.get('missing_critical', []), indent=2)}
+"""
+    
     response = client.messages.create(
         model="claude-haiku-4-5-20251001",
         max_tokens=4000,
-        temperature=0.3,
-        system="""Rewrite this CV to match the JD. 
-RULES: Never add skills/experience the candidate doesn't have. 
-Never change dates or company names. 
-DO: rephrase bullets with JD keywords, reorder sections, strengthen verbs.
-Return clean Markdown.""",
+        temperature=0.1,
+        system="""You are an expert CV writer. Your job is to REWRITE (not invent) the candidate's CV.
+
+## ABSOLUTE RULES — NEVER VIOLATE:
+1. NEVER add a skill, tool, technology, or certification the candidate didn't mention in their original CV
+2. NEVER change company names, job titles, or employment dates
+3. NEVER invent metrics, numbers, or outcomes (if the original says "improved performance", keep it vague — don't say "improved performance by 40%")
+4. NEVER add responsibilities that aren't implied by the original bullets
+5. If a skill is required by the JD but NOT in the CV → DO NOT add it. Instead, find the closest real skill the candidate has and highlight that instead.
+
+## WHAT YOU CAN DO:
+- Rephrase bullets using stronger action verbs
+- Reorder sections to prioritize what's most relevant to the JD
+- Incorporate JD keywords ONLY when they describe something the candidate already does
+- Expand on existing bullets with more professional language
+- Rewrite the summary to align with the target role — using only facts from the CV
+
+## VERIFICATION STEP:
+Before returning the rewritten CV, mentally check every bullet point:
+"Is this based on something in the original CV?" → If NO, remove it.
+
+## OUTPUT FORMAT:
+Return the rewritten CV in clean Markdown.
+After the CV, add a section called "## Changes Made" listing exactly what you changed and why.
+Then add "## What was NOT added" listing the JD requirements that weren't in the CV and therefore were intentionally excluded.""",
         messages=[{"role": "user", "content": prompt}]
     )
     return response.content[0].text
