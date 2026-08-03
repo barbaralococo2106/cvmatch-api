@@ -100,3 +100,22 @@ def get_analyses(db = Depends(get_db)):
         }
         for a in analyses
     ]
+
+@app.get("/analyses/{analysis_id}")
+def get_analysis(analysis_id: str, db = Depends(get_db)):
+    analysis = db.query(models.Analysis).filter(models.Analysis.id == analysis_id).first()
+    
+    if not analysis:
+        raise HTTPException(status_code=404, detail="Análisis no encontrado")
+    
+    return {
+        "id":           analysis.id,
+        "created_at":   analysis.created_at,
+        "company_name": analysis.company_name,
+        "role_title":   analysis.role_title,
+        "score":        analysis.score,
+        "rewritten_cv": analysis.rewritten_cv,
+        "cover_letter": analysis.cover_letter,
+        "parsed_cv":    analysis.parsed_cv,
+        "jd_analysis":  analysis.jd_analysis,
+    }
