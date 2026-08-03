@@ -86,3 +86,17 @@ async def analyze(
         "jd_analysis":  analysis.jd_analysis,
     }
     
+@app.get("/analyses")
+def get_analyses(db = Depends(get_db)):
+    analyses = db.query(models.Analysis).order_by(models.Analysis.created_at.desc()).all()
+    
+    return [
+        {
+            "id":           a.id,
+            "created_at":   a.created_at,
+            "company_name": a.company_name,
+            "role_title":   a.role_title,
+            "score":        a.score.get("overall_score") if a.score else None,
+        }
+        for a in analyses
+    ]
