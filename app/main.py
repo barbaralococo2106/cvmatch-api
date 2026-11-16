@@ -210,18 +210,7 @@ def download_cover_letter(analysis_id: str, db = Depends(get_db)):
     if not analysis:
         raise HTTPException(status_code=404, detail="Análisis no encontrado")
 
-    cv_text = clean_cv_text(analysis.rewritten_cv or "")
-    
-    # Obtener el nombre del candidato del CV parseado
-    nombre = ""
-    if analysis.parsed_cv and isinstance(analysis.parsed_cv, dict):
-        nombre = analysis.parsed_cv.get("contact", {}).get("name", "")
-    
-    # Agregar el nombre como título al inicio
-    if nombre:
-        cv_text = f"# {nombre}\n\n{cv_text}"
-    
-    pdf_bytes = md_to_pdf(cv_text)
+    pdf_bytes = md_to_pdf(analysis.cover_letter or "")
 
     return StreamingResponse(
         io.BytesIO(pdf_bytes),
